@@ -6,14 +6,14 @@
 | ---------------------- | ---------- |
 | `AKERUN_CLIENT_ID`     |            |
 | `AKERUN_CLIENT_SECRET` |            |
-| `AKERUN_CALLBACK_URL`  |            |
+| `AKERUN_REDIRECT_URL`  |            |
 | `S3_BUCKET`            |            |
+| `SLACK_WEBHOOK_URL`    |            |
 
 ## Dev
 
 ```sh
 npm i -g serverless
 go get -u github.com/golang/dep/cmd/dep
-dep ensure
-make
+make deploy
 ```
