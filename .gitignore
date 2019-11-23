@@ -1,0 +1,4 @@
+vendor/
+bin/
+Gopkg.lock
+.serverless/

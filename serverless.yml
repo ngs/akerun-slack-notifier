@@ -1,0 +1,48 @@
+service: akerun-slack-notifier
+
+frameworkVersion: ">=1.28.0 <2.0.0"
+
+custom:
+  environment:
+    AKERUN_CLIENT_ID: ${env:AKERUN_CLIENT_ID}
+    AKERUN_CLIENT_SECRET: ${env:AKERUN_CLIENT_SECRET}
+    AKERUN_REDIRECT_URL: ${env:AKERUN_REDIRECT_URL}
+    S3_BUCKET: ${env:S3_BUCKET}
+
+provider:
+  name: aws
+  runtime: go1.x
+
+functions:
+  redirect:
+    handler: bin/redirect
+    environment: ${self:custom.environment}
+    events:
+      - http:
+          path: redirect
+          method: get
+  callback:
+    handler: bin/callback
+    environment: ${self:custom.environment}
+    events:
+      - http:
+          path: callback
+          method: get
+  check:
+    handler: bin/check
+    environment: ${self:custom.environment}
+    events:
+      - schedule:
+          rate: rate(1 minute)
+  refresh:
+    handler: bin/refresh
+    environment: ${self:custom.environment}
+    events:
+      - schedule:
+          rate: rate(1 hour)
+
+package:
+ exclude:
+   - ./**
+ include:
+   - ./bin/**
