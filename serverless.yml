@@ -19,14 +19,14 @@ functions:
     environment: ${self:custom.environment}
     events:
       - http:
-          path: redirect
+          path: akerun
           method: get
   callback:
     handler: bin/callback
     environment: ${self:custom.environment}
     events:
       - http:
-          path: callback
+          path: callbacks/akerun
           method: get
   check:
     handler: bin/check
