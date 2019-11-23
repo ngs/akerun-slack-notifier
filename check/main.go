@@ -148,10 +148,6 @@ func Handler(ctx context.Context) error {
 		return err
 	}
 	var orgResp *akerun.OrganizationsResponse
-	token, err = akerun.Config.TokenSource(ctx, token).Token()
-	if err != nil {
-		return err
-	}
 	client := akerun.Config.Client(ctx, token)
 	resp, err := client.Get("https://api.akerun.com/v3/organizations")
 	if err != nil {
