@@ -71,13 +71,15 @@ func checkOrganizationAccesses(client *http.Client, id string) error {
 	for _, acc := range accessesResp.Accesses {
 		text := accessText(acc)
 		if text != "" {
-			sections = append(sections, BlockSection{
-				Type: "section",
-				Text: BlockText{
-					Type: "mrkdwn",
-					Text: text,
+			sections = append([]BlockSection{
+				BlockSection{
+					Type: "section",
+					Text: BlockText{
+						Type: "mrkdwn",
+						Text: text,
+					},
 				},
-			})
+			}, sections...)
 		}
 	}
 	payload, _ := json.Marshal(&BlocksInput{Blocks: sections})
