@@ -16,23 +16,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// BlockSection .
-type BlockSection struct {
-	Type string    `json:"type"`
-	Text BlockText `json:"text"`
-}
-
-// BlockText .
-type BlockText struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
-}
-
-// BlocksInput .
-type BlocksInput struct {
-	Blocks []BlockSection `json:"blocks"`
-}
-
 // AccessConfiguration .
 type AccessConfiguration struct {
 	LastID int `json:"lastID"`
