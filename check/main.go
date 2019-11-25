@@ -38,7 +38,7 @@ func checkOrganizationAccesses(client *http.Client, id string) error {
 			lastID = cfg.LastID
 		}
 	}
-	resp, err := client.Get("https://api.akerun.com/v3/organizations/" + id + "/accesses?sort_by=id&sort_order=desc&id_after=" + strconv.Itoa(lastID))
+	resp, err := client.Get("https://api.akerun.com/v3/organizations/" + id + "/accesses?sort_by=id&sort_order=asc&id_after=" + strconv.Itoa(lastID))
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func checkOrganizationAccesses(client *http.Client, id string) error {
 			}
 		}
 	}
-	payload, _ := json.Marshal(&AccessConfiguration{LastID: accessesResp.Accesses[0].ID})
+	payload, _ := json.Marshal(&AccessConfiguration{LastID: accessesResp.Accesses[len(accessesResp.Accesses)-1].ID})
 	_, err = svc.PutObject(&s3.PutObjectInput{
 		Key:    &key,
 		Bucket: &bucket,
