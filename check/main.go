@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 
+	"github.com/ashwanthkumar/slack-go-webhook"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -38,7 +38,7 @@ func checkOrganizationAccesses(client *http.Client, id string) error {
 			lastID = cfg.LastID
 		}
 	}
-	resp, err := client.Get("https://api.akerun.com/v3/organizations/" + id + "/accesses?sort_by=id&sort_order=desc&id_after=" + strconv.Itoa(lastID))
+	resp, err := client.Get("https://api.akerun.com/v3/organizations/" + id + "/accesses?sort_by=id&sort_order=asc&id_after=" + strconv.Itoa(lastID))
 	if err != nil {
 		return err
 	}
@@ -51,22 +51,12 @@ func checkOrganizationAccesses(client *http.Client, id string) error {
 		return nil
 	}
 	for _, acc := range accessesResp.Accesses {
-		text := accessText(acc)
-		if text != "" {
-			payload, _ := json.Marshal(&map[string]string{"text": text})
-			slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
-			resp, err = http.DefaultClient.Post(slackWebhookURL, "application/json", bytes.NewReader(payload))
-			if err != nil {
-				return err
-			}
-			if resp.StatusCode != 200 {
-				buf := new(bytes.Buffer)
-				buf.ReadFrom(resp.Body)
-				return fmt.Errorf("%v", buf.String())
-			}
+		err := notifyAccess(acc)
+		if err != nil {
+			return err
 		}
 	}
-	payload, _ := json.Marshal(&AccessConfiguration{LastID: accessesResp.Accesses[0].ID})
+	payload, _ := json.Marshal(&AccessConfiguration{LastID: accessesResp.Accesses[len(accessesResp.Accesses)-1].ID})
 	_, err = svc.PutObject(&s3.PutObjectInput{
 		Key:    &key,
 		Bucket: &bucket,
@@ -75,32 +65,53 @@ func checkOrganizationAccesses(client *http.Client, id string) error {
 	return err
 }
 
-func accessText(access akerun.Access) string {
+func notifyAccess(access akerun.Access) error {
+	slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
+	attachment := slack.Attachment{}
 	deviceName := access.DeviceName
 	akerunName := access.Akerun.Name
-	icon := ""
-	verb := ""
+	var color string
+	var text string
+	var icon string
+	var verb string
 	if access.Action == "lock" {
+		color = "good"
 		icon = ":lock:"
 		verb = "locked"
 	} else if access.Action == "unlock" {
+		color = "danger"
 		icon = ":unlock:"
 		verb = "unlocked"
 	} else {
-		return ""
+		return nil
 	}
-	if access.DeviceType == "nfc_outside" {
-		deviceName = "Outside NFC"
-	} else if access.DeviceType == "nfc_inside" {
-		deviceName = "Inside NFC"
-	} else if access.DeviceType == "autolock" {
-		return icon + " *" + akerunName + "* was locked automatically"
+	attachment.Color = &color
+	if access.DeviceType == "autolock" {
+		text = icon + " *" + akerunName + "* was locked automatically"
+	} else {
+		if access.DeviceType == "nfc_outside" {
+			deviceName = "Outside NFC"
+		} else if access.DeviceType == "nfc_inside" {
+			deviceName = "Inside NFC"
+		}
+		userName := "(unknown) :thinking_face:"
+		if access.User != nil {
+			userName = access.User.Name
+		}
+		text = icon + " *" + userName + "* " + verb + " *" + akerunName + "*"
+		attachment.AddField(slack.Field{Title: "Device", Value: deviceName})
 	}
-	userName := "(unknown) :thinking_face:"
-	if access.User != nil {
-		userName = access.User.Name
+	ts := access.AccessedAt.Unix()
+	attachment.Timestamp = &ts
+	payload := slack.Payload{
+		Text:        text,
+		Attachments: []slack.Attachment{attachment},
 	}
-	return icon + " *" + userName + "* " + verb + " *" + akerunName + "* using " + deviceName
+	err := slack.Send(slackWebhookURL, "", payload)
+	if len(err) > 0 {
+		return err[0]
+	}
+	return nil
 }
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call

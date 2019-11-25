@@ -9,3 +9,7 @@
 [[constraint]]
   branch = "master"
   name = "golang.org/x/oauth2"
+
+[[constraint]]
+  name = "github.com/ashwanthkumar/slack-go-webhook"
+  version = "0.3.0"
