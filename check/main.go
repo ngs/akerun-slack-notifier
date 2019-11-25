@@ -67,33 +67,23 @@ func checkOrganizationAccesses(client *http.Client, id string) error {
 	if len(accessesResp.Accesses) == 0 {
 		return nil
 	}
-	sections := []BlockSection{}
 	for _, acc := range accessesResp.Accesses {
 		text := accessText(acc)
 		if text != "" {
-			sections = append([]BlockSection{
-				BlockSection{
-					Type: "section",
-					Text: BlockText{
-						Type: "mrkdwn",
-						Text: text,
-					},
-				},
-			}, sections...)
+			payload, _ := json.Marshal(&map[string]string{"text": text})
+			slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
+			resp, err = http.DefaultClient.Post(slackWebhookURL, "application/json", bytes.NewReader(payload))
+			if err != nil {
+				return err
+			}
+			if resp.StatusCode != 200 {
+				buf := new(bytes.Buffer)
+				buf.ReadFrom(resp.Body)
+				return fmt.Errorf("%v", buf.String())
+			}
 		}
 	}
-	payload, _ := json.Marshal(&BlocksInput{Blocks: sections})
-	slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
-	resp, err = http.DefaultClient.Post(slackWebhookURL, "application/json", bytes.NewReader(payload))
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != 200 {
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(resp.Body)
-		return fmt.Errorf("%v", buf.String())
-	}
-	payload, _ = json.Marshal(&AccessConfiguration{LastID: accessesResp.Accesses[0].ID})
+	payload, _ := json.Marshal(&AccessConfiguration{LastID: accessesResp.Accesses[0].ID})
 	_, err = svc.PutObject(&s3.PutObjectInput{
 		Key:    &key,
 		Bucket: &bucket,
