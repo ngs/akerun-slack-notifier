@@ -50,19 +50,21 @@ func checkOrganizationAccesses(client *http.Client, id string) error {
 	if len(accessesResp.Accesses) == 0 {
 		return nil
 	}
-	for _, acc := range accessesResp.Accesses {
-		text := accessText(acc)
-		if text != "" {
-			payload, _ := json.Marshal(&map[string]string{"text": text})
-			slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
-			resp, err = http.DefaultClient.Post(slackWebhookURL, "application/json", bytes.NewReader(payload))
-			if err != nil {
-				return err
-			}
-			if resp.StatusCode != 200 {
-				buf := new(bytes.Buffer)
-				buf.ReadFrom(resp.Body)
-				return fmt.Errorf("%v", buf.String())
+	if lastID > 0 {
+		for _, acc := range accessesResp.Accesses {
+			text := accessText(acc)
+			if text != "" {
+				payload, _ := json.Marshal(&map[string]string{"text": text})
+				slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
+				resp, err = http.DefaultClient.Post(slackWebhookURL, "application/json", bytes.NewReader(payload))
+				if err != nil {
+					return err
+				}
+				if resp.StatusCode != 200 {
+					buf := new(bytes.Buffer)
+					buf.ReadFrom(resp.Body)
+					return fmt.Errorf("%v", buf.String())
+				}
 			}
 		}
 	}
@@ -121,6 +123,16 @@ func Handler(ctx context.Context) error {
 	err = json.NewDecoder(res.Body).Decode(&token)
 	if err != nil {
 		return err
+	}
+	tokenSource := akerun.Config.TokenSource(ctx, token)
+	newToken, err := tokenSource.Token()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	if newToken.AccessToken != token.AccessToken {
+		akerun.UploadToken(newToken)
+		token = newToken
 	}
 	var orgResp *akerun.OrganizationsResponse
 	client := akerun.Config.Client(ctx, token)
